@@ -12,8 +12,8 @@
       "@/layouts/*": [
         "src/layouts/*"
       ],
-      "@/utils": [
-        "src/utils/index.ts"
+      "@/db": [
+        "src/db.ts"
       ],
     }
   }
