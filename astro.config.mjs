@@ -6,6 +6,18 @@ import vercel from "@astrojs/vercel";
 export default defineConfig({
   output: "server",
   adapter: vercel(),
+  security: {
+    // Astro ignores X-Forwarded-Host unless the host is declared trusted, and
+    // falls back to "localhost". Astro.url.origin then never matches the
+    // browser's Origin header, so its CSRF check rejects every form POST with
+    // "Cross-site POST form submissions are forbidden".
+    allowedDomains: [
+      { hostname: "g-no.me", protocol: "https" },
+      { hostname: "**.g-no.me", protocol: "https" },
+      // Vercel preview deployments get a generated subdomain each time.
+      { hostname: "**.vercel.app", protocol: "https" },
+    ],
+  },
   env: {
     schema: {
       // Declared as secrets so Astro reads them at runtime. Public vars get
