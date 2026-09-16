@@ -30,16 +30,33 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
     url && (
         <script define:vars={{ url }} is:inline>
             const audio = new Audio("/woo.mp3");
-            function playAudio() {
-                return new Promise((res) => {
-                    audio.onended = res;
-                    audio.play();
-                });
+            let leaving = false;
+
+            function go() {
+                if (leaving) return;
+                leaving = true;
+                location.assign(url);
             }
 
-            document.addEventListener("click", async () => {
-                await playAudio();
-                location.assign(url);
+            // The clip is ~0.3s, so leaving once it ends is imperceptible.
+            audio.addEventListener("ended", go);
+
+            // Browsers refuse unmuted audio until the visitor interacts with
+            // the page, so this rejects on most cold loads. Redirect anyway
+            // rather than stranding anyone, but treat the first gesture we do
+            // get as permission to let the gnome sing.
+            audio.play().catch(() => {
+                const fallback = setTimeout(go, 1500);
+                for (const event of ["pointerdown", "keydown", "touchend"]) {
+                    document.addEventListener(
+                        event,
+                        () => {
+                            clearTimeout(fallback);
+                            audio.play().catch(go);
+                        },
+                        { once: true },
+                    );
+                }
             });
         </script>
     )
@@ -55,8 +72,7 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
                         <a href={url}>{url}</a>
                         <br />
                         <br />
-                        Wanna go there now? <strong>Click anywhere</strong> to be
-                        redirected.
+                        Taking you there now…
                     </>
                 ) : (
                     <>
