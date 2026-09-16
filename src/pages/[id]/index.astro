@@ -1,41 +1,73 @@
 ---
-import { db, eq, ShortUrl } from "astro:db";
+import { eq } from "drizzle-orm";
+import { db, dbReady, ShortUrl } from "@/db";
 import Layout from "@/layouts/Layout.astro";
 import Card from "@/components/Card.astro";
+import BackLink from "@/components/BackLink.astro";
 
-var url = "/";
+var url: string | undefined;
+
 try {
-    const id = parseInt(Astro.params.id!);
-    const query = await db.select().from(ShortUrl).where(eq(ShortUrl.id, id));
-    url = query[0].url;
+    const id = Number(Astro.params.id);
+    if (Number.isInteger(id)) {
+        await dbReady();
+        const query = await db
+            .select()
+            .from(ShortUrl)
+            .where(eq(ShortUrl.id, id));
+        url = query[0]?.url;
+    }
 } catch (e) {
     console.error(e);
 }
 
-const pageTitle = `Redirecting to ${url} ✨`;
+if (!url) Astro.response.status = 404;
+
+const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
 ---
 
-<script define:vars={{ url }} is:inline>
-    const audio = new Audio("/woo.mp3");
-    function playAudio() {
-        return new Promise((res) => {
-            audio.onended = res;
-            audio.play();
-        });
-    }
+{
+    url && (
+        <script define:vars={{ url }} is:inline>
+            const audio = new Audio("/woo.mp3");
+            function playAudio() {
+                return new Promise((res) => {
+                    audio.onended = res;
+                    audio.play();
+                });
+            }
 
-    document.addEventListener("click", async () => {
-        await playAudio();
-        location.assign(url);
-    });
-</script>
+            document.addEventListener("click", async () => {
+                await playAudio();
+                location.assign(url);
+            });
+        </script>
+    )
+}
 
 <Layout title={pageTitle}>
     <Card class="center">
         <main>
-            Seems <strong>you were gnomed</strong> on your way to
-            <a href={url}>{url}</a><br /><br />
-            Wanna go there now? <strong>Click anywhere</strong> to be redirected.
+            {
+                url ? (
+                    <>
+                        Seems <strong>you were gnomed</strong> on your way to
+                        <a href={url}>{url}</a>
+                        <br />
+                        <br />
+                        Wanna go there now? <strong>Click anywhere</strong> to be
+                        redirected.
+                    </>
+                ) : (
+                    <>
+                        <strong>The gnome ate this one.</strong>
+                        <br />
+                        <br />
+                        There's no link behind that code.
+                        <BackLink text="Make a new one" />
+                    </>
+                )
+            }
         </main>
     </Card>
 
