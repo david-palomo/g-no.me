@@ -30,58 +30,72 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
     url && (
         <script define:vars={{ url }} is:inline>
             const LINGER_MS = 5000;
-            const audio = new Audio("/woo.mp3");
-            const counter = document.getElementById("countdown");
-            const counterLine = document.getElementById("countdown-line");
-            const deadline = Date.now() + LINGER_MS;
-            let leaving = false;
-            let ticker;
 
-            function go() {
-                if (leaving) return;
-                leaving = true;
-                clearInterval(ticker);
-                location.assign(url);
+            function start() {
+                const counter = document.getElementById("countdown");
+                const counterLine = document.getElementById("countdown-line");
+                const audio = new Audio("/woo.mp3");
+                const deadline = Date.now() + LINGER_MS;
+                let leaving = false;
+                let ticker;
+
+                function go() {
+                    if (leaving) return;
+                    leaving = true;
+                    clearInterval(ticker);
+                    location.assign(url);
+                }
+
+                // Derived from a deadline rather than decremented, so a
+                // throttled background tab can't strand anyone on a frozen
+                // number. Revealing on the first tick also means the counter
+                // stays hidden if this script never runs, rather than sitting
+                // there stuck.
+                function tick() {
+                    const left = Math.ceil((deadline - Date.now()) / 1000);
+                    if (left <= 0) return go();
+                    counterLine.classList.add("ticking");
+                    counter.textContent = left;
+                }
+
+                tick();
+                ticker = setInterval(tick, 250);
+
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") tick();
+                });
+
+                // Browsers refuse unmuted audio until the visitor interacts
+                // with the page, so this rejects on most loads -- the
+                // countdown is what gets them out. Where it is allowed the
+                // gnome just sings on arrival; it must not cut the countdown
+                // short, so nothing is hooked to "ended" here.
+                audio.play().catch(() => {});
+
+                // A tap is the gesture that buys us the sound, and it means
+                // "let me off", so this one does leave once the clip ends.
+                for (const event of ["pointerdown", "keydown"]) {
+                    document.addEventListener(
+                        event,
+                        () => {
+                            clearInterval(ticker);
+                            audio.addEventListener("ended", go, {
+                                once: true,
+                            });
+                            audio.currentTime = 0;
+                            audio.play().catch(go);
+                        },
+                        { once: true },
+                    );
+                }
             }
 
-            // Derived from a deadline rather than counted down, so a throttled
-            // background tab can't leave the visitor stranded on "1".
-            function tick() {
-                const left = Math.ceil((deadline - Date.now()) / 1000);
-                if (left <= 0) return go();
-                // Let the gnome have the stage first, then count 3, 2, 1.
-                if (left > 3) return;
-                counterLine.classList.add("ticking");
-                counter.textContent = left;
-            }
-
-            tick();
-            ticker = setInterval(tick, 250);
-
-            // Background tabs get their timers throttled to a crawl, so a link
-            // opened in one would sit frozen on its countdown. Re-check the
-            // moment it's looked at: the deadline has usually already passed.
-            document.addEventListener("visibilitychange", () => {
-                if (document.visibilityState === "visible") tick();
-            });
-
-            // The clip is ~0.3s, so leaving the moment it ends feels instant.
-            audio.addEventListener("ended", go);
-
-            // Browsers refuse unmuted audio until the visitor interacts with
-            // the page, so this rejects on most loads -- the countdown is what
-            // gets them out. A tap is the gesture that buys us the gnome.
-            audio.play().catch(() => {});
-
-            for (const event of ["pointerdown", "keydown"]) {
-                document.addEventListener(
-                    event,
-                    () => {
-                        clearInterval(ticker);
-                        audio.play().catch(go);
-                    },
-                    { once: true },
-                );
+            // Astro emits this inline script above the markup it drives, so
+            // the elements do not exist yet when it first runs.
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", start);
+            } else {
+                start();
             }
         </script>
     )
@@ -107,7 +121,7 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
                             <strong>Tap anywhere</strong> to get off my property
                         </p>
                         <p class="countdown" id="countdown-line">
-                            or I'll shove you off in <span id="countdown">3</span>
+                            or I'll shove you off in <span id="countdown">5</span>
                         </p>
                     </>
                 ) : (
