@@ -8,7 +8,7 @@ The app stores links in a [libSQL](https://github.com/tursodatabase/libsql)
 database and needs a connection URL to start. Copy `.env.example` to `.env` and
 fill it in with either of these:
 
-**Turso** (free tier, what production uses):
+**Turso** (free tier):
 
 ```bash
 turso db create gnome
@@ -37,7 +37,3 @@ The `ShortUrl` table is created on first use, so there's no migration step.
 Set `LIBSQL_URL` and `LIBSQL_AUTH_TOKEN` in the Vercel project's environment
 variables. They're read at runtime, so changing them only needs a redeploy, not
 a rebuild.
-
-## TODO
-
-- [ ] Pretty much everything
