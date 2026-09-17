@@ -29,50 +29,86 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
 {
     url && (
         <script define:vars={{ url }} is:inline>
+            const LINGER_MS = 4000;
             const audio = new Audio("/woo.mp3");
+            const counter = document.getElementById("countdown");
+            const counterLine = document.getElementById("countdown-line");
+            const deadline = Date.now() + LINGER_MS;
             let leaving = false;
+            let ticker;
 
             function go() {
                 if (leaving) return;
                 leaving = true;
+                clearInterval(ticker);
                 location.assign(url);
             }
 
-            // The clip is ~0.3s, so leaving once it ends is imperceptible.
+            // Derived from a deadline rather than counted down, so a throttled
+            // background tab can't leave the visitor stranded on "1".
+            function tick() {
+                const left = Math.ceil((deadline - Date.now()) / 1000);
+                if (left <= 0) return go();
+                // Hold the first beat on the gnome alone, then count 3, 2, 1.
+                if (left > 3) return;
+                counterLine.classList.add("ticking");
+                counter.textContent = left;
+            }
+
+            tick();
+            ticker = setInterval(tick, 250);
+
+            // Background tabs get their timers throttled to a crawl, so a link
+            // opened in one would sit frozen on its countdown. Re-check the
+            // moment it's looked at: the deadline has usually already passed.
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible") tick();
+            });
+
+            // The clip is ~0.3s, so leaving the moment it ends feels instant.
             audio.addEventListener("ended", go);
 
             // Browsers refuse unmuted audio until the visitor interacts with
-            // the page, so this rejects on most cold loads. Redirect anyway
-            // rather than stranding anyone, but treat the first gesture we do
-            // get as permission to let the gnome sing.
-            audio.play().catch(() => {
-                const fallback = setTimeout(go, 1500);
-                for (const event of ["pointerdown", "keydown", "touchend"]) {
-                    document.addEventListener(
-                        event,
-                        () => {
-                            clearTimeout(fallback);
-                            audio.play().catch(go);
-                        },
-                        { once: true },
-                    );
-                }
-            });
+            // the page, so this rejects on most loads -- the countdown is what
+            // gets them out. A tap is the gesture that buys us the gnome.
+            audio.play().catch(() => {});
+
+            for (const event of ["pointerdown", "keydown"]) {
+                document.addEventListener(
+                    event,
+                    () => {
+                        clearInterval(ticker);
+                        audio.play().catch(go);
+                    },
+                    { once: true },
+                );
+            }
         </script>
     )
 }
 
 <Layout title={pageTitle}>
-    <Card class="center">
+    <Card>
         <main>
             {
                 url ? (
                     <>
-                        Seems <strong>you were gnomed</strong> on your way to
-                        <a href={url}>{url}</a>
-                        <br />
-                        <br />
-                        Taking you there now…
+                        <img
+                            src="/favicon.svg"
+                            alt=""
+                            width="120"
+                            height="120"
+                        />
+                        <p class="shout">You've been gnomed!</p>
+                        <p class="dest">
+                            on your way to <a href={url}>{url}</a>
+                        </p>
+                        <p class="hint">
+                            <strong>Tap anywhere</strong> to get off my property
+                        </p>
+                        <p class="countdown" id="countdown-line">
+                            or I'll shove you off in <span id="countdown">3</span>
+                        </p>
                     </>
                 ) : (
                     <>
@@ -88,11 +124,38 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
     </Card>
 
     <style>
-        .center {
+        /* `<Card class="center">` never worked: Card doesn't forward props, so
+           the rule matched nothing. Style the element this page owns instead. */
+        main {
             padding: 1.5rem 2rem;
-            margin: 0 auto;
             text-align: center;
-            width: fit-content;
+        }
+        main :global(a) {
+            margin-inline: auto;
+        }
+        .shout {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0 0.25rem;
+        }
+        .dest {
+            margin: 0 0 1.25rem;
+            overflow-wrap: anywhere;
+        }
+        .hint {
+            margin: 0;
+        }
+        .countdown {
+            margin: 0.35rem 0 0;
+            font-size: 0.75rem;
+            opacity: 0.6;
+            /* Reserve the space so revealing it doesn't shift the layout.
+               Without JS it simply never appears, which is correct: nothing
+               is going to count down. */
+            visibility: hidden;
+        }
+        .countdown.ticking {
+            visibility: visible;
         }
     </style>
 </Layout>
