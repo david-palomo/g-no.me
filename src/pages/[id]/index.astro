@@ -29,7 +29,7 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
 {
     url && (
         <script define:vars={{ url }} is:inline>
-            const LINGER_MS = 4000;
+            const LINGER_MS = 5000;
             const audio = new Audio("/woo.mp3");
             const counter = document.getElementById("countdown");
             const counterLine = document.getElementById("countdown-line");
@@ -49,7 +49,7 @@ const pageTitle = url ? `Redirecting to ${url} ✨` : "Gnomed into the void";
             function tick() {
                 const left = Math.ceil((deadline - Date.now()) / 1000);
                 if (left <= 0) return go();
-                // Hold the first beat on the gnome alone, then count 3, 2, 1.
+                // Let the gnome have the stage first, then count 3, 2, 1.
                 if (left > 3) return;
                 counterLine.classList.add("ticking");
                 counter.textContent = left;
